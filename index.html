@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BharatCric — A new way to score cricket</title>
+<meta name="description" content="BharatCric is a modern Android cricket scoring app. Quick scoring, real-time matches, ball-by-ball stats. Made for India's gully cricket." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Geist:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  /* ===================== RESET & TOKENS ===================== */
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #000000;
+    --bg-1: #0A0A0A;
+    --bg-2: #141414;
+    --line: #1F1F1F;
+    --line-2: #2A2A2A;
+    --text: #F5F2EC;
+    --text-dim: #9B9B9B;
+    --text-faint: #5A5A5A;
+    --accent: #FF7700;
+    --accent-2: #FF9933;
+    --green: #00DB3E;
+    --red: #FF2100;
+
+    --serif: 'Instrument Serif', 'EB Garamond', Georgia, serif;
+    --sans: 'Geist', 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    --max: 1200px;
+    --pad-x: clamp(20px, 4vw, 56px);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* film-grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.35;
+    z-index: 999;
+    mix-blend-mode: screen;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+
+  ::selection { background: var(--accent); color: #000; }
+
+  .container { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--pad-x); }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .label--accent { color: var(--accent); }
+
+  /* ===================== NAV ===================== */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    background: rgba(0,0,0,0.55);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 72px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: var(--accent);
+    display: grid; place-items: center;
+    color: #000;
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 8px 24px -8px rgba(255,119,0,0.4);
+    position: relative; overflow: hidden;
+  }
+  .brand-mark::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #000;
+    border: 1.5px solid #fff;
+    bottom: -4px; right: -4px;
+  }
+  .brand-name {
+    font-family: var(--serif);
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .brand-name em { font-style: italic; color: var(--accent); }
+  nav ul { list-style: none; display: flex; gap: 32px; align-items: center; }
+  nav ul a {
+    font-size: 14px;
+    color: var(--text-dim);
+    transition: color 0.2s ease;
+  }
+  nav ul a:hover { color: var(--text); }
+
+  .nav-cta {
+    padding: 10px 18px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #000;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(255,119,0,0.6); }
+
+  @media (max-width: 680px) {
+    nav ul li:not(:last-child) { display: none; }
+  }
+
+  /* ===================== HERO ===================== */
+  .hero {
+    position: relative;
+    padding-block: clamp(80px, 14vw, 180px) clamp(60px, 10vw, 120px);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(900px 500px at 100% 0%, rgba(255,119,0,0.10), transparent 60%),
+      radial-gradient(700px 400px at 0% 80%, rgba(255,119,0,0.06), transparent 60%);
+    pointer-events: none;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 56px; align-items: start; }
+  }
+
+  .meta-row {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 40px;
+  }
+  .meta-row .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 12px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(48px, 9vw, 124px);
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+  h1 em { color: var(--accent); font-style: italic; }
+  h1 .stroke {
+    -webkit-text-stroke: 1.5px var(--text);
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    font-style: italic;
+  }
+
+  .hero-right .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--text-dim);
+    max-width: 460px;
+    line-height: 1.65;
+  }
+  .hero-right .lede strong { color: var(--text); font-weight: 500; }
+
+  .hero-cta-row {
+    margin-top: 40px;
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 26px;
+    background: var(--text);
+    color: #000;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .btn-primary:hover { background: var(--accent); transform: translateY(-2px); }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 16px 22px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ===================== STATS RIBBON ===================== */
+  .stats {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-left: 1px solid var(--line);
+  }
+  @media (max-width: 800px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .stat {
+    padding: 36px var(--pad-x) 36px;
+    border-right: 1px solid var(--line);
+  }
+  .stats-grid > .stat:first-child { padding-left: max(var(--pad-x), 0px); }
+
+  .stat .n {
+    font-family: var(--serif);
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .stat .n .small { font-size: 0.45em; vertical-align: super; color: var(--accent); margin-left: 2px; }
+  .stat .l {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ===================== MANIFESTO ===================== */
+  .manifesto {
+    padding-block: clamp(80px, 12vw, 160px);
+    position: relative;
+  }
+  .manifesto-inner {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: clamp(40px, 8vw, 120px);
+    align-items: start;
+  }
+  @media (max-width: 800px) {
+    .manifesto-inner { grid-template-columns: 1fr; gap: 32px; }
+  }
+  .manifesto h2 {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    position: sticky; top: 100px;
+  }
+  .manifesto p {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(22px, 2.6vw, 34px);
+    line-height: 1.32;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .manifesto p + p { margin-top: 28px; color: var(--text-dim); }
+  .manifesto p em { color: var(--accent); font-style: italic; }
+
+  /* ===================== FEATURES ===================== */
+  .features { padding-block: clamp(60px, 10vw, 120px); border-top: 1px solid var(--line); }
+  .features-head {
+    display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap;
+    gap: 32px; margin-bottom: 64px;
+  }
+  .features-head h2 {
+    font-family: var(--serif);
+    font-size: clamp(32px, 4.8vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    max-width: 580px;
+  }
+  .features-head .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+  }
+  .feature {
+    background: var(--bg);
+    padding: 36px 32px 40px;
+    position: relative;
+    transition: background 0.3s ease;
+  }
+  .feature:hover { background: var(--bg-1); }
+  .feature .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.16em;
+  }
+  .feature h3 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-top: 24px;
+    margin-bottom: 16px;
+  }
+  .feature h3 em { color: var(--accent); font-style: italic; }
+  .feature p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.65;
+    max-width: 32ch;
+  }
+  .feature .icon {
+    margin-top: 36px;
+    width: 32px; height: 32px;
+    color: var(--accent);
+    opacity: 0.9;
+  }
+
+  /* ===================== TWO MODES ===================== */
+  .modes { padding-block: clamp(80px, 12vw, 140px); border-top: 1px solid var(--line); }
+  .modes-head { text-align: center; margin-bottom: 72px; }
+  .modes-head h2 {
+    font-family: var(--serif);
+    font-size: clamp(32px, 5vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  .modes-head h2 em { color: var(--accent); font-style: italic; }
+
+  .modes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 800px) {
+    .modes-grid { grid-template-columns: 1fr; }
+  }
+  .mode {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 40px 36px;
+    display: flex; flex-direction: column;
+    min-height: 320px;
+    transition: border-color 0.3s ease, transform 0.3s ease;
+  }
+  .mode:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .mode .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .mode h3 {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+  .mode p { color: var(--text-dim); font-size: 14.5px; line-height: 1.65; margin-bottom: 24px; }
+  .mode ul { list-style: none; margin-top: auto; }
+  .mode ul li {
+    font-size: 13.5px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .mode ul li::before {
+    content: '';
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .mode ul li strong { color: var(--text); font-weight: 500; }
+
+  /* ===================== BUILT-BY ===================== */
+  .built-by { padding-block: clamp(80px, 12vw, 140px); border-top: 1px solid var(--line); position: relative; overflow: hidden; }
+  .built-by::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(600px 300px at 50% 0%, rgba(255,119,0,0.08), transparent 60%);
+    pointer-events: none;
+  }
+  .built-by-inner {
+    max-width: 800px; margin-inline: auto; text-align: center;
+    position: relative;
+  }
+  .built-by .label { display: inline-block; margin-bottom: 28px; }
+  .built-by h2 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+  }
+  .built-by h2 em { color: var(--accent); font-style: italic; }
+  .built-by .sig {
+    margin-top: 40px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .built-by .sig .pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    margin-left: 8px;
+    color: var(--text-dim);
+  }
+
+  /* ===================== FAQ ===================== */
+  .faq { padding-block: clamp(60px, 10vw, 120px); border-top: 1px solid var(--line); }
+  .faq-head { display: flex; align-items: end; gap: 32px; margin-bottom: 48px; flex-wrap: wrap; }
+  .faq-head h2 {
+    font-family: var(--serif);
+    font-size: clamp(32px, 4.8vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .faq-list {
+    border-top: 1px solid var(--line);
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+  }
+  .faq-item summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 28px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    font-family: var(--serif);
+    font-size: clamp(20px, 2.2vw, 26px);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    transition: color 0.2s ease;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: '+';
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 32px;
+    color: var(--accent);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-item[open] summary { color: var(--accent); }
+  .faq-item summary:hover { color: var(--accent); }
+  .faq-answer {
+    padding: 0 4px 28px;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.65;
+    max-width: 720px;
+  }
+  .faq-answer a { color: var(--accent); border-bottom: 1px solid var(--accent); }
+
+  /* ===================== CTA ===================== */
+  .final-cta {
+    padding-block: clamp(80px, 12vw, 160px);
+    border-top: 1px solid var(--line);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .final-cta::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(800px 400px at 50% 50%, rgba(255,119,0,0.12), transparent 60%);
+    pointer-events: none;
+  }
+  .final-cta h2 {
+    font-family: var(--serif);
+    font-size: clamp(48px, 10vw, 132px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 400;
+    position: relative;
+  }
+  .final-cta h2 em { color: var(--accent); font-style: italic; }
+  .final-cta h2 .stroke {
+    -webkit-text-stroke: 1.5px var(--text);
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    font-style: italic;
+  }
+  .final-cta p {
+    margin-top: 32px;
+    color: var(--text-dim);
+    font-size: 16px;
+    position: relative;
+  }
+  .final-cta .btn-primary { margin-top: 40px; padding: 18px 32px; font-size: 15px; position: relative; }
+
+  /* ===================== FOOTER ===================== */
+  footer {
+    border-top: 1px solid var(--line);
+    padding-block: 48px 36px;
+  }
+  .foot {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 56px;
+  }
+  @media (max-width: 800px) {
+    .foot { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 500px) {
+    .foot { grid-template-columns: 1fr; }
+  }
+  .foot-brand p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 16px;
+    max-width: 32ch;
+    line-height: 1.6;
+  }
+  .foot-col h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 18px;
+    font-weight: 500;
+  }
+  .foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .foot-col a {
+    color: var(--text-dim);
+    font-size: 14px;
+    transition: color 0.2s ease;
+  }
+  .foot-col a:hover { color: var(--accent); }
+
+  .foot-bottom {
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-faint);
+  }
+  .foot-bottom .live { display: flex; align-items: center; gap: 8px; }
+  .foot-bottom .live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+
+  /* ===================== ANIMATION: REVEAL ===================== */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.9s ease, transform 0.9s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  .reveal-d1 { transition-delay: 0.08s; }
+  .reveal-d2 { transition-delay: 0.16s; }
+  .reveal-d3 { transition-delay: 0.24s; }
+  .reveal-d4 { transition-delay: 0.32s; }
+
+  /* prefers reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
+    .meta-row .dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav>
+  <div class="container inner">
+    <a href="#" class="brand" aria-label="BharatCric home">
+      <span class="brand-mark">B</span>
+      <span class="brand-name"><em>Bharat</em>Cric</span>
+    </a>
+    <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#modes">Modes</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#download" class="nav-cta">Get the app</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="meta-row reveal">
+          <span class="dot"></span>
+          <span class="label label--accent">Now in closed beta · India</span>
+        </div>
+        <h1 class="reveal reveal-d1">
+          Cricket,<br/>
+          <em>recounted.</em><br/>
+          <span class="stroke">Ball by ball.</span>
+        </h1>
+      </div>
+      <div class="hero-right reveal reveal-d3">
+        <p class="lede">
+          <strong>BharatCric</strong> is a modern scoring companion for cricket, built for the way India actually plays — in galis, on weekends, between friends. Score in seconds, share live, remember forever.
+        </p>
+        <div class="hero-cta-row">
+          <a class="btn-primary" href="#download">
+            Get the app
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+          <a class="btn-ghost" href="#why">Read the story</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ STATS RIBBON ============ -->
+<section class="stats" aria-label="Stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat reveal">
+        <div class="n">14<span class="small">+</span></div>
+        <div class="l">Active beta testers</div>
+      </div>
+      <div class="stat reveal reveal-d1">
+        <div class="n">1<span class="small">s</span></div>
+        <div class="l">To score a ball</div>
+      </div>
+      <div class="stat reveal reveal-d2">
+        <div class="n">∞</div>
+        <div class="l">Quick scoring</div>
+      </div>
+      <div class="stat reveal reveal-d3">
+        <div class="n">3<span class="small">×</span></div>
+        <div class="l">Co-hosts per match</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MANIFESTO ============ -->
+<section class="manifesto" id="why">
+  <div class="container">
+    <div class="manifesto-inner">
+      <h2 class="reveal">— Why we built it</h2>
+      <div>
+        <p class="reveal">
+          Every weekend, a million matches are played across India. Tape-ball thrillers in tight gullies, weekend leagues on dusty grounds, college friendlies that end in chai. <em>Almost none of them are scored properly.</em>
+        </p>
+        <p class="reveal reveal-d1">
+          Existing apps are bloated, slow, and built for stadiums — not streets. We wanted something different. Something you can pick up mid-over and just <em>start scoring</em>. No accounts, no friction, no learning curve.
+        </p>
+        <p class="reveal reveal-d2">
+          BharatCric is that app. A clean, fast, beautifully made cricket scoring companion that respects your time and treats every backyard match like it matters. Because it does.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="features-head">
+      <h2 class="reveal">Everything you need.<br/>Nothing you don't.</h2>
+      <span class="meta">— Eleven core features</span>
+    </div>
+    <div class="features-grid">
+      <article class="feature reveal">
+        <span class="num">— 01</span>
+        <h3>Ball-by-ball <em>tracking</em></h3>
+        <p>Every dot, single, boundary, wicket. Captured the moment it happens, undoable up to 10 balls back.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M7 7l10 10M7 17L17 7"/></svg>
+      </article>
+      <article class="feature reveal reveal-d1">
+        <span class="num">— 02</span>
+        <h3>Quick & profile <em>modes</em></h3>
+        <p>Score anonymously for a casual game. Or login to keep player stats and match history.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+      </article>
+      <article class="feature reveal reveal-d2">
+        <span class="num">— 03</span>
+        <h3>Co-host <em>scoring</em></h3>
+        <p>Add up to three co-hosts to a match. Anyone can score the next ball — the field decides who's free.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c.8-3.5 3.3-5 6-5s5.2 1.5 6 5M16 13c2 .3 4 1.7 5 5"/></svg>
+      </article>
+      <article class="feature reveal">
+        <span class="num">— 04</span>
+        <h3>Live <em>match links</em></h3>
+        <p>Share a deep link. Friends watch the score update in real-time, no install needed.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>
+      </article>
+      <article class="feature reveal reveal-d1">
+        <span class="num">— 05</span>
+        <h3>Manhattan & worm <em>charts</em></h3>
+        <p>Visualize the chase. See runs per over and momentum graphs the moment the inning ends.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l4-6 4 3 4-7 6 6"/><path d="M3 21h18"/></svg>
+      </article>
+      <article class="feature reveal reveal-d2">
+        <span class="num">— 06</span>
+        <h3>Super over &amp; <em>impact player</em></h3>
+        <p>T20 rules built in. Tie? Run the super over. Game changing? Bring on the impact substitute.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13,2 4,14 11,14 9,22 20,10 13,10"/></svg>
+      </article>
+      <article class="feature reveal">
+        <span class="num">— 07</span>
+        <h3>Configurable <em>overs</em></h3>
+        <p>2-over thrash. 5-over knockout. 20-over weekend. Set balls-per-over for tape-ball or leather.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </article>
+      <article class="feature reveal reveal-d1">
+        <span class="num">— 08</span>
+        <h3>Profile <em>stats</em></h3>
+        <p>Runs, average, strike rate, economy. Your cricketing CV, growing match by match.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 8a4 4 0 11-8 0 4 4 0 018 0z"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+      </article>
+      <article class="feature reveal reveal-d2">
+        <span class="num">— 09</span>
+        <h3>Leaderboards &amp; <em>compare</em></h3>
+        <p>Tournament ranks across your network. Compare two players head-to-head with one tap.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 21V11M12 21V3M18 21v-6"/></svg>
+      </article>
+      <article class="feature reveal">
+        <span class="num">— 10</span>
+        <h3>Offline <em>scoring</em></h3>
+        <p>No signal at the ground? Score anyway. Syncs the moment data returns.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.5a7 7 0 0114-1c2.5 0 5 1.9 5 5a4 4 0 01-4 4H7a5 5 0 010-10z"/></svg>
+      </article>
+      <article class="feature reveal reveal-d1">
+        <span class="num">— 11</span>
+        <h3>Built for <em>India</em></h3>
+        <p>Multilingual UI, regional names, tape-ball formats. Made for how the game actually gets played here.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-6 8-13a8 8 0 10-16 0c0 7 8 13 8 13z"/><circle cx="12" cy="9" r="2.5"/></svg>
+      </article>
+      <article class="feature reveal reveal-d2" style="background:linear-gradient(135deg, rgba(255,119,0,0.04), transparent 50%);">
+        <span class="num" style="color:var(--accent)">— ∞</span>
+        <h3>And <em>much more</em>.</h3>
+        <p>Toss flow, declared runs, wide/no-ball custom values, retired hurt, single-player batting — every rule you actually use.</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TWO MODES ============ -->
+<section class="modes" id="modes">
+  <div class="container">
+    <div class="modes-head">
+      <h2 class="reveal">Two modes. <em>Same speed.</em></h2>
+    </div>
+    <div class="modes-grid">
+      <article class="mode reveal">
+        <span class="tag">— Mode 01</span>
+        <h3>Quick Scoring</h3>
+        <p>No signup. No friction. Open the app, tap "Quick Match," set the teams in 30 seconds, score. The match disappears after 18 hours — perfect for one-off games.</p>
+        <ul>
+          <li><strong>Anonymous</strong> · no account needed</li>
+          <li><strong>3 free</strong> · matches included</li>
+          <li><strong>Auto-cleanup</strong> · 18 hour retention</li>
+        </ul>
+      </article>
+      <article class="mode reveal reveal-d1">
+        <span class="tag">— Mode 02</span>
+        <h3>Profile Match</h3>
+        <p>Every ball counts toward each player's career. Stats roll up to profile pages. Match history persists. Compare with friends, climb leaderboards.</p>
+        <ul>
+          <li><strong>Player stats</strong> · per individual</li>
+          <li><strong>Match history</strong> · forever</li>
+          <li><strong>Co-hosts</strong> · up to 3 scorers</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BUILT-BY ============ -->
+<section class="built-by">
+  <div class="container">
+    <div class="built-by-inner">
+      <span class="label label--accent reveal">— Solo independent</span>
+      <h2 class="reveal reveal-d1">
+        Designed and built by <em>one person</em> who got tired of watching gully matches go unrecorded.
+      </h2>
+      <p class="sig reveal reveal-d2">
+        Made in Mumbai
+        <span class="pill">2026</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="faq-head">
+      <h2 class="reveal">Questions, briefly.</h2>
+      <span class="label reveal reveal-d1">— Six things people ask</span>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item reveal" open>
+        <summary>Is BharatCric free?</summary>
+        <div class="faq-answer">Yes. Quick Scoring is free forever. Profile matches are free during beta, and we'll keep the core free at launch. We'll only charge for advanced team features down the line — if ever.</div>
+      </details>
+      <details class="faq-item reveal reveal-d1">
+        <summary>Do I need an account to score?</summary>
+        <div class="faq-answer">No. Quick Scoring works anonymously. You only need an account if you want stats to be tracked to your profile, or if you want to host profile matches with real players.</div>
+      </details>
+      <details class="faq-item reveal reveal-d2">
+        <summary>Can multiple people score the same match?</summary>
+        <div class="faq-answer">Yes. The match host can add up to 3 co-hosts. Anyone on that list can score the next ball — whoever's free, takes the phone.</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>Does it work offline?</summary>
+        <div class="faq-answer">Yes. Score offline at the ground; everything syncs when data returns. You can also share live match links so friends watch from anywhere.</div>
+      </details>
+      <details class="faq-item reveal reveal-d1">
+        <summary>iOS? Web?</summary>
+        <div class="faq-answer">Android only for now. iOS is on the roadmap. The match-viewer link works on any browser — share a match URL and anyone can watch live.</div>
+      </details>
+      <details class="faq-item reveal reveal-d2">
+        <summary>Where can I read the privacy policy?</summary>
+        <div class="faq-answer">Right here: <a href="https://bharatcric.github.io/privacy-policy/" target="_blank" rel="noopener">bharatcric.github.io/privacy-policy</a>. Plain language. No surprises.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="final-cta" id="download">
+  <div class="container">
+    <h2 class="reveal">
+      Play.<br/>
+      Score. <em>Remember.</em><br/>
+      <span class="stroke">Repeat.</span>
+    </h2>
+    <p class="reveal reveal-d1">Available now on the Play Store · Closed beta · Android</p>
+    <a class="btn-primary reveal reveal-d2" href="#" onclick="alert('Coming to Play Store after closed beta wraps. Join the waitlist by emailing bharatcric26@gmail.com'); return false;">
+      Get on Play Store
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="container">
+    <div class="foot">
+      <div class="foot-brand">
+        <a href="#" class="brand">
+          <span class="brand-mark">B</span>
+          <span class="brand-name"><em>Bharat</em>Cric</span>
+        </a>
+        <p>The cricket scoring companion built for India's actual game. Made in Mumbai, 2026.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#modes">Modes</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#download">Download</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="https://bharatcric.github.io/privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a></li>
+          <li><a href="https://bharatcric.github.io/privacy-policy/" target="_blank" rel="noopener">Terms of Use</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:bharatcric26@gmail.com">bharatcric26@gmail.com</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot-bottom">
+      <span>© 2026 BharatCric · All rights reserved</span>
+      <span class="live"><span class="dot"></span> v1.0.0 · Closed beta</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Intersection-observer based reveal
+  const reveals = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => io.observe(el));
+  } else {
+    reveals.forEach(el => el.classList.add('in'));
+  }
+</script>
+
+</body>
+</html>
